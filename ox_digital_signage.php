@@ -6,7 +6,7 @@
     Author: Oxford University IT Services
     Author URI: http://www.it.ox.ac.uk
     Description: Display a post as a digital sign. Supports categories, refresh time, and the number of posts to cycle. This plugin is build upon the posts_in_page (http://wordpress.org/extend/plugins/posts-in-page) by dgilfoy, ivycat, and sewmyheadon and the Auto Refresh Single Page plugin (http://wordpress.org/extend/plugins/auto-refresh-single-page) by jkohlbach. 
-    Version: 0.0.1
+    Version: 0.0.2
     License: GPLv3
 
     Shortcode usage:
@@ -67,7 +67,14 @@ class oxDigitalSignage{
 
         $this->args['posts_per_page'] = 1;
 
-	if (isset($wp_query->query_vars['current']))
+        /*
+           Post might have been disabled or deleted between function calls
+           I am just refreshing the number of available posts to display.
+        */
+        $query = new WP_Query( 'category_name=' . $optionsArray['category'] );
+        $available_posts = $query->post_count;
+
+	if (isset($wp_query->query_vars['current']) & $available_posts > intval($wp_query->query_vars['current']))
 	{
 	    $current = intval( $wp_query->query_vars['current'] ) + 1;
 	} else {
@@ -162,8 +169,8 @@ class oxDigitalSignage{
         $modulo = min(intval($optionsArray['modulo']), $query->post_count);
         $current = ($current + 1) % $modulo;
 
-        if ( preg_match('/current=(-?\d+)/', $_SERVER["REQUEST_URI"] ) ) { 
-	    $URI = preg_replace('/current=(-?\d+)/', 'current=' . $current, $_SERVER["REQUEST_URI"] );
+	if ( preg_match('/current=(\S*)/', $_SERVER["REQUEST_URI"] ) ) { 
+	    $URI = preg_replace('/current=(\S*)/', 'current=' . $current, $_SERVER["REQUEST_URI"] );
 	} else {
 
             /* 
@@ -238,8 +245,12 @@ class oxDigitalSignage{
 	    $option .= ' ('.$category->category_count.')';
 	    $option .= '</option>';
 	    echo $option;
-  	}
+	}
 	echo '</select></p>';
+	
+	/* Location of the display */
+	echo '<p><label>Location of the display?</label> <input type="text" name="optionsArray[location]" id="oxdsLocation" value="' . $optionsArray['location'] . '" style="width: 100px;" /></p>';
+	echo '<p class="description">Default is empty.</p>';
     }
 
 
@@ -258,7 +269,9 @@ class oxDigitalSignage{
 	    return $post_id;
         }
 
-	$optionsArray = $_POST['optionsArray'];
+        // Retrieve the options array from the post
+        $optionsArray = $_POST['optionsArray'];
+
 
 	// New, Update, and Delete
 	if (empty($optionsArray)) {
