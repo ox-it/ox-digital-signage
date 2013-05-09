@@ -1,9 +1,9 @@
 <?php
 
 /**
-    Plugin name: Oxford Digital Signage
-    Plugin URI: http://wordpress.org/extend/plugins/
-    Author: Oxford University IT Services
+    Plugin name: Oxford Digital Signage (ox-digital-signage)
+    Plugin URI: FIXME
+    Author: Oxford University IT Services (Guido Klingbeil, Marko Jung)
     Author URI: http://www.it.ox.ac.uk
     Description: Displays a single post from a given category in a page as digital sign. The post is selected in a round robin fashion where the user is able to specify that only the first n posts of the category are to be circled.
     Version: 0.3
@@ -13,6 +13,7 @@
     [oxds_add_sign]  - Add all posts to a page (limit to what number posts in WordPress is set to).  This essentially makes a post look like a sign.
 **/
 
+define('OX_DIGITAL_SIGNAGE_VERSION', '0.3');
 
 class oxDigitalSignage{
 
