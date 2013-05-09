@@ -5,8 +5,8 @@
     Plugin URI: http://wordpress.org/extend/plugins/
     Author: Oxford University IT Services
     Author URI: http://www.it.ox.ac.uk
-    Description: Display a post as a digital sign. Supports categories, refresh time, and the number of posts to cycle. This plugin is build upon the posts_in_page (http://wordpress.org/extend/plugins/posts-in-page) by dgilfoy, ivycat, and sewmyheadon and the Auto Refresh Single Page plugin (http://wordpress.org/extend/plugins/auto-refresh-single-page) by jkohlbach. 
-    Version: 0.0.2
+    Description: Displays a single post from a given category in a page as digital sign. The post is selected in a round robin fashion where the user is able to specify that only the first n posts of the category are to be circled.
+    Version: 0.3
     License: GPLv3
 
     Shortcode usage:
@@ -222,11 +222,11 @@ class oxDigitalSignage{
 
         /* Refresh time */
 	echo '<p><label>Seconds to refresh sign after?</label> <input type="text" name="optionsArray[seconds]" id="oxdsSeconds" value="' . $optionsArray['seconds'] . '" style="width: 50px;" /></p>';
-	echo '<p class="description">Default is 60 sec.</p>';
+	echo '<p class="description">Default is 20 sec.</p>';
 
         /* Number of posts to circle */
 	echo '<p><label>Signs to circle?</label> <input type="text" name="optionsArray[modulo]" id="oxdsSeconds" value="' . $optionsArray['modulo'] . '" style="width: 50px;" /></p>';
-	echo '<p class="description">Default is 1 (only display first sign).</p>';
+	echo '<p class="description">Default is 10 (last ten signs).</p>';
 
         /* Category of the posts */
         /* note: by default wordpress is hiding categories with no posts
@@ -286,10 +286,10 @@ class oxDigitalSignage{
         /*
             The option seconds give the refresh time of the digital sign.
             We enforce a minimum value of 1 second. If no refresh time is given
-            we default to a refresh time of 60 seconds.
+            we default to a refresh time of 20 seconds.
         */
 	if (!intval($optionsArray['seconds']) || intval($optionsArray['seconds']) <= 0) {
-	    $optionsArray['seconds'] = 60;
+	    $optionsArray['seconds'] = 20;
         }
 
         /*
@@ -297,7 +297,7 @@ class oxDigitalSignage{
             We enforce a minimum value of 1. This means that only the first post is displayed.
         */
 	if (!intval($optionsArray['modulo']) || intval($optionsArray['modulo']) <= 0) {
-            $optionsArray['modulo'] = 1;
+            $optionsArray['modulo'] = 10;
 	}
 
         /*
