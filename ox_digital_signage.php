@@ -69,21 +69,36 @@ class oxDigitalSignage{
         $this->args['posts_per_page'] = 1;
 
         /*
-           Post might have been disabled or deleted between function calls
-           I am just refreshing the number of available posts to display.
-        */
-        $query = new WP_Query( 'category_name=' . $optionsArray['category'] );
-        $available_posts = $query->post_count;
+           Check if we got a VIP post
+         */
 
-	if (isset($wp_query->query_vars['current']) & $available_posts > intval($wp_query->query_vars['current']))
-	{
-	    $current = intval( $wp_query->query_vars['current'] ) + 1;
-	} else {
-            $current = 1;
+        $query = new WP_Query( array_merge( (array)($this->args), array('post_type' => 'post', 'meta_key' => 'oxdsPostType', 'meta_value' => 'fullscreen_post', 'orderby' => 'date', 'order' => 'DESC') ) );
+        $available_vip_posts = $query->post_count;
+
+        /* if there is a VIP post display it, otherwise use the old scheduling logic */
+        if($available_vip_posts > 0) {
+            $page_posts = $query;
+        } else {
+
+            /*
+               Post might have been disabled or deleted between function calls
+               I am just refreshing the number of available posts to display.
+            */
+            $query = new WP_Query( 'category_name=' . $optionsArray['category'] );
+            $available_posts = $query->post_count;
+
+	    if (isset($wp_query->query_vars['current']) & $available_posts > intval($wp_query->query_vars['current']))
+	    {
+	        $current = intval( $wp_query->query_vars['current'] ) + 1;
+	    } else {
+                $current = 1;
+            }
+            $this->args['paged'] = $current;
+
+            $page_posts = new WP_Query( $this->args );
         }
-        $this->args['paged'] = $current;
 
-        $page_posts = new WP_Query( $this->args );
+        // common code
         $output = self::oxdsTemplatePart( $page_posts );
         wp_reset_postdata();
 
@@ -138,6 +153,21 @@ class oxDigitalSignage{
 	    'side',
 	    'low'
 	);
+
+        /* 
+             add new meta box for the post type 
+             this one is addecd to the post rather than to the page
+         */
+        add_meta_box(
+	    'oxdsPopulatePostOptionsBox',
+	    'Digital signage',
+	    array(&$this, 'oxdsPopulatePostOptionsBox' ),
+	    'post',
+	    'side',
+	    'high'
+	);
+
+
     }
 
 
@@ -253,12 +283,65 @@ class oxDigitalSignage{
 	echo '<p><label>Location of the display?</label> <input type="text" name="optionsArray[location]" id="oxdsLocation" value="' . $optionsArray['location'] . '" style="width: 100px;" /></p>';
 	echo '<p class="description">Default is empty.</p>';
     }
+    
+
+   /*
+        This methods populates the configuration option box
+        by simply generating the HTML code.
+        Options implemented:
+        seconds   The seconds between screen refreshes
+        modulo    The number of posts we are cycling
+        category  The category we want to show
+    */
+    // this function is only registered for the "post" post type, 
+    // so we don't have to check for it
+    public function oxdsPopulatePostOptionsBox() {
+	global $post;
+	
+        // get the post meta data, request only the first entry with the key 'oxdsPostType'
+        $oxdsPostType = get_post_meta($post->ID, 'oxdsPostType', true);
+        error_log( "oxdsPopulatePostOptionsBox: post ID: ".$post->ID.", saved post type: ".$oxdsPostType."." );
+
+        echo '<input type="hidden" name="oxdsName" id="oxdsName" value="' . wp_create_nonce( plugin_basename(__FILE__) ) . '" />';
+
+	/* the post types to be implemented:
+	   - default: a standard post
+	   - vip post,
+	   -image post.
+	*/
+        //$post_types = array( 'default', 'VIP', 'image post' );
+	$post_types = array( 'default_post', 'fullscreen_post', 'image_post' );
+        $post_type_desc = array('default_post' => 'Default post', 'fullscreen_post' => 'Fullscreen priority post', 'image_post' => 'Image Post');
+        //$default = 'default_post';
+    
+	echo '<p><label>Post type:</label> <select name="oxdsPostType" id="oxdsPostType" />';
+  	foreach ($post_types as $post_type) {
+  	    $option = '<option value="' . $post_type . '"';
+
+            // retrieve existing value from post meta data
+            if ( $post_type == $oxdsPostType ) {
+	        $option .= ' selected ';
+                error_log( "selected: ".$post_type."\n\n\n\n\n\n" );
+	    }
+
+	    $option .= '>';
+	    $option .= $post_type_desc[ $post_type ];
+	    $option .= '</option>';
+	    echo $option;
+	}
+	echo '</select></p>';
+    }
 
 
     /*
         This method saves the options. If values are missing
         or invalid, meaningful defaults are chosen.
     */
+
+    // TODO: I need to distimguish post types: post, page
+    // if it is a page, we save the rotation data using the optionsArray
+    // if it is a post, we store the postType in the meta data
+
     public function oxdsSaveOptions($post_id) {
 	global $post;
 
@@ -270,49 +353,65 @@ class oxDigitalSignage{
 	    return $post_id;
         }
 
-        // Retrieve the options array from the post
-        $optionsArray = $_POST['optionsArray'];
+        // get the post type (page, post, or unknown)
+        if( get_post_type($post_id) == 'post' || get_post_type($post_id) == 'revision') {
+            error_log( "oxdsSaveOptions: post type is: " .$_POST["oxdsPostType"]. ".\n\n\n\n\n\n" );
 
+            // add the postType to the post meta data
+            // if it is not set, set it to default
+            // since this means something went wrong, we clean-up the potentially corrupted data
+            if( $_POST["oxdsPostType"] == '') {
+                $_POST["oxdsPostType"] = 'default_post';
+                //delete_post_meta($post_id, 'oxdsPostType' );
+            } 
+            update_post_meta($post_id,'oxdsPostType', ($_POST["oxdsPostType"]));
+ 
+        } elseif ( get_post_type($post_id) == 'page' ) {
+            error_log( "oxdsSaveOptions: post type is: page.\n\n\n\n\n\n\n\n" );
 
-	// New, Update, and Delete
-	if (empty($optionsArray)) {
-	delete_post_meta(
-	    $post_id,
-	    'optionsArray',
-	    get_post_meta($post_id, 'optionsArray', true)
-	    );
-            return;
-	}
+            // Retrieve the options array from the post
+            $optionsArray = $_POST['optionsArray'];
+       
+	    // New, Update, and Delete
+	    if (empty($optionsArray)) {
+	        delete_post_meta(
+	        $post_id,
+	        'optionsArray',
+	        get_post_meta($post_id, 'optionsArray', true)
+	        );
+                return;
+	    }
 
-        /*
-            The option seconds give the refresh time of the digital sign.
-            We enforce a minimum value of 1 second. If no refresh time is given
-            we default to a refresh time of 20 seconds.
-        */
-	if (!intval($optionsArray['seconds']) || intval($optionsArray['seconds']) <= 0) {
-	    $optionsArray['seconds'] = 20;
+            /*
+                The option seconds give the refresh time of the digital sign.
+                We enforce a minimum value of 1 second. If no refresh time is given
+                we default to a refresh time of 20 seconds.
+             */
+	    if (!intval($optionsArray['seconds']) || intval($optionsArray['seconds']) <= 0) {
+	        $optionsArray['seconds'] = 20;
+            }
+
+            /*
+                The option modulo defines the number of posts to be circled as digital signs.
+                We enforce a minimum value of 1. This means that only the first post is displayed.
+            */
+	    if (!intval($optionsArray['modulo']) || intval($optionsArray['modulo']) <= 0) {
+                $optionsArray['modulo'] = 10;
+	    }
+
+            /*
+                The category of the posts to be displayed.
+                If no category is given, we default to the first category available.
+             */
+	    if ( $optionsArray['category'] == '' ) {
+	        $tmp = get_categories();
+                $optionsArray['category'] = $tmp[0]->category_nicename;
+	    }
+
+            if (!add_post_meta($post_id, 'optionsArray', serialize($optionsArray), true))
+                update_post_meta($post_id, 'optionsArray', serialize($optionsArray));
         }
-
-        /*
-            The option modulo defines the number of posts to be circled as digital signs.
-            We enforce a minimum value of 1. This means that only the first post is displayed.
-        */
-	if (!intval($optionsArray['modulo']) || intval($optionsArray['modulo']) <= 0) {
-            $optionsArray['modulo'] = 10;
-	}
-
-        /*
-            The category of the posts to be displayed.
-            If no category is given, we default to the first category available.
-        */
-	if ( $optionsArray['category'] == '' ) {
-	    $tmp = get_categories();
-            $optionsArray['category'] = $tmp[0]->category_nicename;
-	}
-
-	if (!add_post_meta($post_id, 'optionsArray', serialize($optionsArray), true))
-            update_post_meta($post_id, 'optionsArray', serialize($optionsArray));
-    }
+    } // end of oxdsSaveOptions
 
 } new oxDigitalSignage();
 
