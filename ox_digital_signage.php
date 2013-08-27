@@ -6,7 +6,7 @@
     Author: Oxford University IT Services (Guido Klingbeil, Marko Jung)
     Author URI: http://www.it.ox.ac.uk
     Description: Displays a single post from a given category in a page as digital sign. The post is selected in a round robin fashion where the user is able to specify that only the first n posts of the category are to be circled.
-    Version: 0.3
+    Version: 0.4
     License: GPLv3
 
     Shortcode usage:

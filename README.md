@@ -61,7 +61,11 @@ Simply copy the posts_loop_template.php to your theme directory and make changes
 
 
 ## Changelog
-
+* 0.4
+  * Added support for fullscreen priority posts and image posts. The plugin supports three types for digital signs: (i) the
+    default sign, (ii) a fullscreen priority sign, and (iii) an image sign. A fullscreen priority sign takes the entire screen. 
+    If a published and scheduled fullscreen priority sign exists for a given screen, only this one will be displayed. 
+    If there are more than one fullscreen priority signs, the youngest one is displayed.
 * 0.3
   * New defaults,
   * Added documentation.
