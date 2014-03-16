@@ -61,6 +61,9 @@ Simply copy the posts_loop_template.php to your theme directory and make changes
 
 
 ## Changelog
+* 0.5
+  * Added custom columns to the display all posts table.
+  * Custom columns are: post type, start date/time, end date/time, status (enabled/disabled).
 * 0.4
   * Added support for fullscreen priority posts and image posts. The plugin supports three types for digital signs: (i) the
     default sign, (ii) a fullscreen priority sign, and (iii) an image sign. A fullscreen priority sign takes the entire screen. 

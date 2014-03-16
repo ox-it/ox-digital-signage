@@ -6,14 +6,14 @@
     Author: Oxford University IT Services (Guido Klingbeil, Marko Jung)
     Author URI: http://www.it.ox.ac.uk
     Description: Displays a single post from a given category in a page as digital sign. The post is selected in a round robin fashion where the user is able to specify that only the first n posts of the category are to be circled.
-    Version: 0.4
+    Version: 0.5
     License: GPLv3
 
     Shortcode usage:
     [oxds_add_sign]  - Add all posts to a page (limit to what number posts in WordPress is set to).  This essentially makes a post look like a sign.
 **/
 
-define('OX_DIGITAL_SIGNAGE_VERSION', '0.3');
+define('OX_DIGITAL_SIGNAGE_VERSION', '0.5');
 
 class oxDigitalSignage{
 
@@ -39,6 +39,13 @@ class oxDigitalSignage{
            Retrieve the number of the post currently displayed.
         */
         add_filter('query_vars', array( &$this, 'oxdsQueryVars') );
+
+        /*
+          change 15.3.2014: add custom BSG columns to the show all posts table
+          register our new funtions
+        */
+        add_action( 'manage_posts_custom_column', array( $this, 'oxdsFillColumns'), 10, 2 );
+        add_filter( 'manage_posts_columns', array( $this, 'oxdsAddColumns') );
     }
 
 
@@ -278,7 +285,7 @@ class oxDigitalSignage{
 	    echo $option;
 	}
 	echo '</select></p>';
-	
+
 	/* Location of the display */
 	echo '<p><label>Location of the display?</label> <input type="text" name="optionsArray[location]" id="oxdsLocation" value="' . $optionsArray['location'] . '" style="width: 100px;" /></p>';
 	echo '<p class="description">Default is empty.</p>';
@@ -311,7 +318,7 @@ class oxDigitalSignage{
 	*/
         //$post_types = array( 'default', 'VIP', 'image post' );
 	$post_types = array( 'default_post', 'fullscreen_post', 'image_post' );
-        $post_type_desc = array('default_post' => 'Default post', 'fullscreen_post' => 'Fullscreen priority post', 'image_post' => 'Image Post');
+        $post_type_desc = array('default_post' => 'Default post', 'fullscreen_post' => 'Fullscreen priority post', 'image_post' => 'Image post');
         //$default = 'default_post';
     
 	echo '<p><label>Post type:</label> <select name="oxdsPostType" id="oxdsPostType" />';
@@ -413,7 +420,66 @@ class oxDigitalSignage{
         }
     } // end of oxdsSaveOptions
 
+    /*
+       Change 15.3.2014 new code to insert and display custom columns
+       to the view all posts table.
+     */
+    function oxdsAddColumns( $columns ) {
+        // remove unwanted columns tags, date, and comments
+        unset($columns[ 'tags' ]);
+        unset($columns[ 'date' ]);
+        unset($columns[ 'comments' ]);
+        unset($columns[ 'author' ]);
+
+        // add new columns Type, Start, End, Status
+        // and re-insert Author
+        $columns[ 'type' ] = 'Type';
+        $columns[ 'start' ] = 'Start';
+        $columns[ 'end' ] = 'End';
+        $columns[ 'author' ] = 'Author';
+        $columns[ 'status' ] = 'Status';
+
+        // rename categories to screen
+        $columns[ 'categories' ] = 'Screen';
+
+        return $columns;
+    }
+
+    function oxdsFillColumns( $name ) {
+        //error_log('In function my_show_columns.');
+        global $post;
+        //error_log( print_r( get_post_meta( $post->ID), true) );
+        switch( $name ) {
+            case 'status':
+                if( strcmp( $post->post_status, 'draft') == 0 ) {
+                    echo 'disabled';
+                } elseif( strcmp( $post->post_status, 'publish') == 0 ) {
+                    echo 'enabled';
+                } else {
+                    echo $post->post_status;
+                }
+            break;
+            case 'type':
+                $stmp = get_post_meta( $post->ID, 'oxdsPostType', true);
+                if( strcmp( $stmp, 'default_post') == 0 ) {
+                    echo 'Default post';
+                } elseif( strcmp( $stmp, 'fullscreen_post') == 0 ) {
+                    echo 'Fullscreen priority post';
+                } elseif( strcmp( $stmp, 'image_post') == 0 ) {
+                    echo 'Image post';
+                } else {
+                    echo 'Default post';
+                }
+            break;
+            case 'start':
+                echo get_post_meta( $post->ID, 'ox-enable-date', true );
+            break;
+            case 'end':
+                echo get_post_meta( $post->ID, 'ox-disable-date', true );
+            break;
+        }
+    }
+
 } new oxDigitalSignage();
 
 ?>
-
